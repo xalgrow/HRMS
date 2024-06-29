@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Profile{% endblock %}
+
+{% block content %}
+<h2>Employee Profile</h2>
+<p><strong>ID:</strong> {{ employee.EmployeeID }}</p>
+<p><strong>First Name:</strong> {{ employee.FirstName }}</p>
+<p><strong>Last Name:</strong> {{ employee.LastName }}</p>
+<p><strong>Department ID:</strong> {{ employee.DepartmentID }}</p>
+<p><strong>Date of Birth:</strong> {{ employee.DateOfBirth }}</p>
+<p><strong>Date of Joining:</strong> {{ employee.DateOfJoining }}</p>
+<p><strong>Address:</strong> {{ employee.Address }}</p>
+<p><strong>Email:</strong> {{ employee.Email }}</p>
+<p><strong>Phone Number:</strong> {{ employee.PhoneNumber }}</p>
+<a href="{{ url_for('edit_employee', employee_id=employee.EmployeeID) }}" class="btn btn-warning">Edit</a>
+<a href="{{ url_for('index') }}" class="btn btn-secondary">Back to List</a>
+{% endblock %}

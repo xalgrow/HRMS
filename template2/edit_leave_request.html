@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Leave Request{% endblock %}
+
+{% block content %}
+<h1 class="mt-5">Edit Leave Request</h1>
+<form method="post">
+    <div class="form-group">
+        <label for="employee_id">Employee ID</label>
+        <select class="form-control" id="employee_id" name="employee_id">
+            {% for employee in employees %}
+            <option value="{{ employee[0] }}" {% if leave_request[1] == employee[0] %}selected{% endif %}>{{ employee[1] }} {{ employee[2] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="start_date">Start Date</label>
+        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ leave_request[2] }}" required>
+    </div>
+    <div class="form-group">
+        <label for="end_date">End Date</label>
+        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ leave_request[3] }}" required>
+    </div>
+    <div class="form-group">
+        <label for="reason">Reason</label>
+        <textarea class="form-control" id="reason" name="reason" rows="3" required>{{ leave_request[4] }}</textarea>
+    </div>
+    <div class="form-group">
+        <label for="status">Status</label>
+        <select class="form-control" id="status" name="status">
+            <option value="Pending" {% if leave_request[5] == 'Pending' %}selected{% endif %}>Pending</option>
+            <option value="Approved" {% if leave_request[5] == 'Approved' %}selected{% endif %}>Approved</option>
+            <option value="Denied" {% if leave_request[5] == 'Denied' %}selected{% endif %}>Denied</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+{% endblock %}

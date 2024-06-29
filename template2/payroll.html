@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Payroll Records{% endblock %}
+
+{% block content %}
+<h1 class="mt-5">Payroll Records</h1>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Employee ID</th>
+            <th>Month</th>
+            <th>Year</th>
+            <th>Amount</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in payroll_records %}
+        <tr>
+            <td>{{ record[0] }}</td>
+            <td>{{ record[1] }}</td>
+            <td>{{ record[2] }}</td>
+            <td>{{ record[3] }}</td>
+            <td>{{ record[4] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

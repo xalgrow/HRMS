@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Leave Requests{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Leave Requests</h2>
+    <a href="{{ url_for('add_leave_request') }}" class="btn btn-primary mb-4">Add Leave Request</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Leave Request ID</th>
+                <th>Employee ID</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for request in leave_requests %}
+            <tr>
+                <td>{{ request['LeaveRequestID'] }}</td>
+                <td>{{ request['EmployeeID'] }}</td>
+                <td>{{ request['StartDate'] }}</td>
+                <td>{{ request['EndDate'] }}</td>
+                <td>{{ request['Reason'] }}</td>
+                <td>{{ request['Status'] }}</td>
+                <td>
+                    <a href="{{ url_for('edit_leave_request', leave_request_id=request['LeaveRequestID']) }}" class="btn btn-warning">Edit</a>
+                    <form action="{{ url_for('delete_leave_request', leave_request_id=request['LeaveRequestID']) }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
