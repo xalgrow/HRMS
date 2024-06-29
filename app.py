@@ -50,6 +50,43 @@ class Attendance(db.Model):
     def __repr__(self):
         return f'<Attendance {self.user_id} - {self.date} - {self.status}>'
 
+class Employee(db.Model):
+    __tablename__ = 'employees'
+    __table_args__ = {'extend_existing': True}
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
+
+    def __repr__(self):
+        return f'<Employee {self.name}>'
+
+class Onboarding(db.Model):
+    __tablename__ = 'onboarding'
+    __table_args__ = {'extend_existing': True}
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    documents_submitted = db.Column(db.Boolean, nullable=False)
+    training_completed = db.Column(db.Boolean, nullable=False)
+    status = db.Column(db.String(50), nullable=False)
+
+    def __repr__(self):
+        return f'<Onboarding {self.employee_id}>'
+
+class Offboarding(db.Model):
+    __tablename__ = 'offboarding'
+    __table_args__ = {'extend_existing': True}
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=False)
+    exit_date = db.Column(db.Date, nullable=False)
+    exit_interview_done = db.Column(db.Boolean, nullable=False)
+    status = db.Column(db.String(50), nullable=False)
+
+    def __repr__(self):
+        return f'<Offboarding {self.employee_id}>'
+
 @app.route('/')
 def home():
     return "Server is running!"
@@ -126,16 +163,15 @@ def create_role():
     db.session.commit()
     return jsonify({"msg": "Role created successfully"}), 201
 
-@app.route('/role/<int:id>', methods=['PUT'])
+@app.route('/role/<int:role_id>', methods=['PUT'])
 @jwt_required()
-def update_role(id):
+def update_role(role_id):
+    role = Role.query.get_or_404(role_id)
     data = request.get_json()
-    role = Role.query.get(id)
-    if not role:
-        return jsonify({"msg": "Role not found"}), 404
-    role.name = data['name']
+    if 'name' in data:
+        role.name = data['name']
     db.session.commit()
-    return jsonify({"msg": "Role updated successfully"}), 200
+    return jsonify({'message': 'Role updated successfully!'})
 
 @app.route('/role/<int:id>', methods=['DELETE'])
 @jwt_required()
@@ -235,7 +271,114 @@ def get_users():
     result = [{"id": user.id, "username": user.username, "email": user.email, "role_id": user.role_id} for user in users]
     return jsonify(result), 200
 
+@app.route('/onboarding', methods=['POST'])
+@jwt_required()
+def create_onboarding():
+    data = request.get_json()
+    new_onboarding = Onboarding(
+        employee_id=data['employee_id'],
+        start_date=datetime.strptime(data['start_date'], '%Y-%m-%d'),
+        end_date=datetime.strptime(data['end_date'], '%Y-%m-%d'),
+        documents_submitted=data['documents_submitted'],
+        training_completed=data['training_completed'],
+        status=data['status']
+    )
+    db.session.add(new_onboarding)
+    db.session.commit()
+    return jsonify({"msg": "Onboarding created successfully"}), 201
+
+@app.route('/onboarding/<int:id>', methods=['PUT'])
+@jwt_required()
+def update_onboarding(id):
+    data = request.get_json()
+    onboarding = Onboarding.query.get(id)
+    if not onboarding:
+        return jsonify({"msg": "Onboarding record not found"}), 404
+    onboarding.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
+    onboarding.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
+    onboarding.documents_submitted = data['documents_submitted']
+    onboarding.training_completed = data['training_completed']
+    onboarding.status = data['status']
+    db.session.commit()
+    return jsonify({"msg": "Onboarding updated successfully"}), 200
+
+@app.route('/onboarding/<int:id>', methods=['DELETE'])
+@jwt_required()
+def delete_onboarding(id):
+    onboarding = Onboarding.query.get(id)
+    if not onboarding:
+        return jsonify({"msg": "Onboarding record not found"}), 404
+    db.session.delete(onboarding)
+    db.session.commit()
+    return jsonify({"msg": "Onboarding deleted successfully"}), 200
+
+@app.route('/offboarding', methods=['POST'])
+@jwt_required()
+def create_offboarding():
+    data = request.get_json()
+    new_offboarding = Offboarding(
+        employee_id=data['employee_id'],
+        exit_date=datetime.strptime(data['exit_date'], '%Y-%m-%d'),
+        exit_interview_done=data['exit_interview_done'],
+        status=data['status']
+    )
+    db.session.add(new_offboarding)
+    db.session.commit()
+    return jsonify({"msg": "Offboarding created successfully"}), 201
+
+@app.route('/offboarding/<int:id>', methods=['PUT'])
+@jwt_required()
+def update_offboarding(id):
+    data = request.get_json()
+    offboarding = Offboarding.query.get(id)
+    if not offboarding:
+        return jsonify({"msg": "Offboarding record not found"}), 404
+    offboarding.exit_date = datetime.strptime(data['exit_date'], '%Y-%m-%d')
+    offboarding.exit_interview_done = data['exit_interview_done']
+    offboarding.status = data['status']
+    db.session.commit()
+    return jsonify({"msg": "Offboarding updated successfully"}), 200
+
+@app.route('/offboarding/<int:id>', methods=['DELETE'])
+@jwt_required()
+def delete_offboarding(id):
+    offboarding = Offboarding.query.get(id)
+    if not offboarding:
+        return jsonify({"msg": "Offboarding record not found"}), 404
+    db.session.delete(offboarding)
+    db.session.commit()
+    return jsonify({"msg": "Offboarding deleted successfully"}), 200
+
+@app.route('/onboarding/<int:id>', methods=['GET'])
+@jwt_required()
+def get_onboarding(id):
+    onboarding = Onboarding.query.get(id)
+    if not onboarding:
+        return jsonify({"msg": "Onboarding record not found"}), 404
+    result = {
+        "employee_id": onboarding.employee_id,
+        "start_date": onboarding.start_date.strftime('%Y-%m-%d'),
+        "end_date": onboarding.end_date.strftime('%Y-%m-%d'),
+        "documents_submitted": onboarding.documents_submitted,
+        "training_completed": onboarding.training_completed,
+        "status": onboarding.status
+    }
+    return jsonify(result), 200
+
+@app.route('/offboarding/<int:id>', methods=['GET'])
+@jwt_required()
+def get_offboarding(id):
+    offboarding = Offboarding.query.get(id)
+    if not offboarding:
+        return jsonify({"msg": "Offboarding record not found"}), 404
+    result = {
+        "employee_id": offboarding.employee_id,
+        "exit_date": offboarding.exit_date.strftime('%Y-%m-%d'),
+        "exit_interview_done": offboarding.exit_interview_done,
+        "status": offboarding.status
+    }
+    return jsonify(result), 200
+
 if __name__ == '__main__':
     app.config['DEBUG'] = True  # Enable debug mode
     app.run()
-
