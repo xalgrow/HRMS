@@ -1,88 +1,99 @@
-import os
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_cors import CORS
 from datetime import datetime
+from flask_migrate import Migrate
+import os
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Ensure the database path is persistent
 db_path = os.path.join(os.path.dirname(__file__), 'instance', 'hrms.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'your_jwt_secret_key'
+
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    response = {
+        "message": str(e),
+        "type": type(e).__name__
+    }
+    print(f"Error: {e}")
+    return jsonify(response), 500
+
 class User(db.Model):
+    __tablename__ = 'user'
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+    role_id = db.Column(db.Integer, nullable=False)
 
     def __repr__(self):
         return f'<User {self.username}>'
 
 class Role(db.Model):
+    __tablename__ = 'role'
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
-    users = db.relationship('User', backref='role', lazy=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
 
     def __repr__(self):
         return f'<Role {self.name}>'
 
 class Payroll(db.Model):
+    __tablename__ = 'payroll'
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    salary = db.Column(db.Float, nullable=False)
-    date = db.Column(db.Date, nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employee.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    payment_date = db.Column(db.Date, nullable=False)
 
     def __repr__(self):
-        return f'<Payroll {self.user_id} - {self.salary}>'
+        return f'<Payroll {self.employee_id} - {self.amount}>'
 
 class Attendance(db.Model):
+    __tablename__ = 'attendance'
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employee.id'), nullable=False)
     date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(10), nullable=False)
-
-    def __repr__(self):
-        return f'<Attendance {self.user_id} - {self.date} - {self.status}>'
-
-class Employee(db.Model):
-    __tablename__ = 'employees'
-    __table_args__ = {'extend_existing': True}
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
-
-    def __repr__(self):
-        return f'<Employee {self.name}>'
-
-class Onboarding(db.Model):
-    __tablename__ = 'onboarding'
-    __table_args__ = {'extend_existing': True}
-    id = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=False)
-    start_date = db.Column(db.Date, nullable=False)
-    end_date = db.Column(db.Date, nullable=False)
-    documents_submitted = db.Column(db.Boolean, nullable=False)
-    training_completed = db.Column(db.Boolean, nullable=False)
     status = db.Column(db.String(50), nullable=False)
 
     def __repr__(self):
-        return f'<Onboarding {self.employee_id}>'
+        return f'<Attendance {self.employee_id} - {self.date} - {self.status}>'
+
+class Employee(db.Model):
+    __tablename__ = 'employee'
+    __table_args__ = {'extend_existing': True}
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), nullable=False, unique=True)
+    phone_number = db.Column(db.String(15), nullable=False)
+    address = db.Column(db.String(200), nullable=False)
+    city = db.Column(db.String(50), nullable=False)
+    state = db.Column(db.String(50), nullable=False)
+    zip_code = db.Column(db.String(20), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+
+    def __repr__(self):
+        return f'<Employee {self.name}>'
 
 class Offboarding(db.Model):
     __tablename__ = 'offboarding'
     __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=False)
-    exit_date = db.Column(db.Date, nullable=False)
-    exit_interview_done = db.Column(db.Boolean, nullable=False)
-    status = db.Column(db.String(50), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employee.id'), nullable=False)
+    offboarding_date = db.Column(db.Date, nullable=False)
+    reason = db.Column(db.String(200), nullable=False)
 
     def __repr__(self):
         return f'<Offboarding {self.employee_id}>'
@@ -94,26 +105,49 @@ def home():
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({"message": "User with this email already exists."}), 400
+    if not data:
+        return jsonify({'message': 'No input data provided'}), 400
+
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    role_id = data.get('role_id')
+
+    if not username or not email or not password or not role_id:
+        return jsonify({'message': 'Missing fields'}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if user:
+        return jsonify({'message': 'Username already exists'}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if user:
+        return jsonify({'message': 'Email already exists'}), 400
+
     new_user = User(
-        username=data['username'],
-        email=data['email'],
-        password=data['password'],
-        role_id=data['role_id']
+        username=username,
+        email=email,
+        password=password,
+        role_id=role_id
     )
     db.session.add(new_user)
     db.session.commit()
-    return jsonify({"message": "User registered successfully!"}), 201
+
+    return jsonify({'message': 'User registered successfully'}), 201
 
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    user = User.query.filter_by(email=data['email']).first()
-    if user and user.password == data['password']:
-        access_token = create_access_token(identity=user.id)
-        return jsonify(access_token=access_token), 200
-    return jsonify({"msg": "Bad username or password"}), 401
+    email = data.get('email')
+    password = data.get('password')
+
+    user = User.query.filter_by(email=email, password=password).first()
+
+    if not user:
+        return jsonify({'message': 'Invalid email or password'}), 401
+
+    access_token = create_access_token(identity={'email': user.email, 'role_id': user.role_id})
+    return jsonify({'message': 'Login successful', 'access_token': access_token}), 200
 
 @app.route('/protected', methods=['GET'])
 @jwt_required()
@@ -183,18 +217,11 @@ def delete_role(id):
     db.session.commit()
     return jsonify({"msg": "Role deleted successfully"}), 200
 
-@app.route('/role', methods=['GET'])
-@jwt_required()
-def get_roles():
-    roles = Role.query.all()
-    result = [{"id": role.id, "name": role.name} for role in roles]
-    return jsonify(result), 200
-
 @app.route('/payroll', methods=['POST'])
 @jwt_required()
 def create_payroll():
     data = request.get_json()
-    new_payroll = Payroll(user_id=data['user_id'], salary=data['salary'], date=datetime.strptime(data['date'], '%Y-%m-%d'))
+    new_payroll = Payroll(employee_id=data['employee_id'], amount=data['amount'], payment_date=datetime.strptime(data['payment_date'], '%Y-%m-%d'))
     db.session.add(new_payroll)
     db.session.commit()
     return jsonify({"msg": "Payroll created successfully"}), 201
@@ -206,8 +233,8 @@ def update_payroll(id):
     payroll = Payroll.query.get(id)
     if not payroll:
         return jsonify({"msg": "Payroll record not found"}), 404
-    payroll.salary = data['salary']
-    payroll.date = datetime.strptime(data['date'], '%Y-%m-%d')
+    payroll.amount = data['amount']
+    payroll.payment_date = datetime.strptime(data['payment_date'], '%Y-%m-%d')
     db.session.commit()
     return jsonify({"msg": "Payroll updated successfully"}), 200
 
@@ -225,7 +252,7 @@ def delete_payroll(id):
 @jwt_required()
 def mark_attendance():
     data = request.get_json()
-    new_attendance = Attendance(user_id=data['user_id'], date=datetime.strptime(data['date'], '%Y-%m-%d'), status=data['status'])
+    new_attendance = Attendance(employee_id=data['employee_id'], date=datetime.strptime(data['date'], '%Y-%m-%d'), status=data['status'])
     db.session.add(new_attendance)
     db.session.commit()
     return jsonify({"msg": "Attendance marked successfully"}), 201
@@ -233,8 +260,8 @@ def mark_attendance():
 @app.route('/attendance', methods=['GET'])
 @jwt_required()
 def view_attendance():
-    user_id = request.args.get('user_id')
-    attendance_records = Attendance.query.filter_by(user_id=user_id).all()
+    employee_id = request.args.get('employee_id')
+    attendance_records = Attendance.query.filter_by(employee_id=employee_id).all()
     result = [{"date": record.date.strftime('%Y-%m-%d'), "status": record.status} for record in attendance_records]
     return jsonify(result), 200
 
@@ -246,9 +273,9 @@ def attendance_report():
     attendance_records = Attendance.query.filter(Attendance.date >= start_date, Attendance.date <= end_date).all()
     result = {}
     for record in attendance_records:
-        if record.user_id not in result:
-            result[record.user_id] = {'Present': 0, 'Absent': 0}
-        result[record.user_id][record.status] += 1
+        if record.employee_id not in result:
+            result[record.employee_id] = {'Present': 0, 'Absent': 0}
+        result[record.employee_id][record.status] += 1
     return jsonify(result), 200
 
 @app.route('/payroll/report', methods=['GET'])
@@ -256,12 +283,12 @@ def attendance_report():
 def payroll_report():
     start_date = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d')
     end_date = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d')
-    payroll_records = Payroll.query.filter(Payroll.date >= start_date, Payroll.date <= end_date).all()
+    payroll_records = Payroll.query.filter(Payroll.payment_date >= start_date, Payroll.payment_date <= end_date).all()
     result = {}
     for record in payroll_records:
-        if record.user_id not in result:
-            result[record.user_id] = 0
-        result[record.user_id] += record.salary
+        if record.employee_id not in result:
+            result[record.employee_id] = 0
+        result[record.employee_id] += record.amount
     return jsonify(result), 200
 
 @app.route('/users', methods=['GET'])
@@ -270,6 +297,41 @@ def get_users():
     users = User.query.all()
     result = [{"id": user.id, "username": user.username, "email": user.email, "role_id": user.role_id} for user in users]
     return jsonify(result), 200
+
+@app.route('/users/<int:id>', methods=['GET'])
+@jwt_required()
+def get_user(id):
+    user = User.query.get(id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+    result = {"id": user.id, "username": user.username, "email": user.email, "role_id": user.role_id}
+    return jsonify(result), 200
+
+@app.route('/users/<int:id>', methods=['PUT'])
+@jwt_required()
+def update_user(id):
+    data = request.get_json()
+    user = User.query.get(id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    user.username = data.get('username', user.username)
+    user.email = data.get('email', user.email)
+    user.role_id = data.get('role_id', user.role_id)
+
+    db.session.commit()
+    return jsonify({"message": "User updated successfully"}), 200
+
+@app.route('/users/<int:id>', methods=['DELETE'])
+@jwt_required()
+def delete_user(id):
+    user = User.query.get(id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": "User deleted successfully"}), 200
 
 @app.route('/onboarding', methods=['POST'])
 @jwt_required()
@@ -318,9 +380,8 @@ def create_offboarding():
     data = request.get_json()
     new_offboarding = Offboarding(
         employee_id=data['employee_id'],
-        exit_date=datetime.strptime(data['exit_date'], '%Y-%m-%d'),
-        exit_interview_done=data['exit_interview_done'],
-        status=data['status']
+        offboarding_date=datetime.strptime(data['offboarding_date'], '%Y-%m-%d'),
+        reason=data['reason']
     )
     db.session.add(new_offboarding)
     db.session.commit()
@@ -333,9 +394,8 @@ def update_offboarding(id):
     offboarding = Offboarding.query.get(id)
     if not offboarding:
         return jsonify({"msg": "Offboarding record not found"}), 404
-    offboarding.exit_date = datetime.strptime(data['exit_date'], '%Y-%m-%d')
-    offboarding.exit_interview_done = data['exit_interview_done']
-    offboarding.status = data['status']
+    offboarding.offboarding_date = datetime.strptime(data['offboarding_date'], '%Y-%m-%d')
+    offboarding.reason = data['reason']
     db.session.commit()
     return jsonify({"msg": "Offboarding updated successfully"}), 200
 
@@ -373,9 +433,8 @@ def get_offboarding(id):
         return jsonify({"msg": "Offboarding record not found"}), 404
     result = {
         "employee_id": offboarding.employee_id,
-        "exit_date": offboarding.exit_date.strftime('%Y-%m-%d'),
-        "exit_interview_done": offboarding.exit_interview_done,
-        "status": offboarding.status
+        "offboarding_date": offboarding.offboarding_date.strftime('%Y-%m-%d'),
+        "reason": offboarding.reason
     }
     return jsonify(result), 200
 
