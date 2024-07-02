@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_cors import CORS
@@ -6,7 +6,7 @@ from datetime import datetime
 from flask_migrate import Migrate
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='template2', static_folder='static')
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Ensure the database path is persistent
@@ -18,6 +18,10 @@ app.config['JWT_SECRET_KEY'] = 'your_jwt_secret_key'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -97,10 +101,6 @@ class Offboarding(db.Model):
 
     def __repr__(self):
         return f'<Offboarding {self.employee_id}>'
-
-@app.route('/')
-def home():
-    return "Server is running!"
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -439,5 +439,5 @@ def get_offboarding(id):
     return jsonify(result), 200
 
 if __name__ == '__main__':
-    app.config['DEBUG'] = True  # Enable debug mode
+    app.config['DEBUG'] = os.environ.get('FLASK_DEBUG', 'False') == 'True'  # Enable debug mode based on environment variable
     app.run()
